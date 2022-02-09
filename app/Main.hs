@@ -1,4 +1,6 @@
 module Main where
 
+import Digrafo
+
 main :: IO ()
-main = putStrLn "Hello, Haskell!"
+main = putStrLn "Tarea 03"
