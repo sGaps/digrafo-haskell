@@ -15,6 +15,7 @@ where
 import Data.List (find, sort, groupBy)
 import Data.Function (on)
 import Data.Maybe (maybeToList)
+import Control.Monad(guard)
 
 -----------------------
 -- | TODO: Delete later
@@ -80,48 +81,12 @@ nArcos :: Digrafo v -> Int
 nArcos = length . arcos
 
 
--- TODO: Change `case` by `maybeToList`
--- total function
 sucesores :: Eq v => Digrafo v -> v -> [v]
 sucesores g v = fmap snd . filter ((== v) . fst) . arcos $ g
-
---sucesores g v = case search of
---                    Nothing    -> []
---                    Just nexts -> nexts
---            where search = fmap snd
---                            . find ((== v) . fst)
---                            . runTransition (trans g)
---                            . vertices $ g
-
-swap (a,b) = (b,a) -- but also: uncurry (flip (,))
 
 -- TODO: Redefine but by using runTransition instead of this
 antecesores :: Eq v => Digrafo v -> v -> [v]
 antecesores g v = fmap fst . filter ((== v) . snd) . arcos $ g
-
---antecesores = runTransition
-
--- THIS REQUIRES (Ord v, Eq v) => ...
---antecesores g v = case search of
---                    Nothing    -> []
---                    Just prevs -> prevs
---                where search = fmap snd
---                                . find ((== v) . fst)
---                                -- inverse of runTransition
---                                . fmap ((\(vs,nexts) -> (head vs, nexts)) . unzip)
---                                . groupBy ((==) `on` fst)
---                                . sort
---                                . fmap swap
---                                . arcos $ g
-
-
---antecesores g v = groupBy ((==) `on` snd) . arcos $ g
---antecesores g v = groupBy ((==) `on` fst) . sort . fmap swap . arcos $ g
-        -- gather edges
-        -- swap first and second slot of each element
-        -- sort them
-        -- group by their next vertex
-
 
 gradoSal :: Eq v => Digrafo v -> v -> Int
 gradoSal g = length . sucesores g
@@ -135,6 +100,16 @@ depthFirstSearch = undefined
 topologicalSort :: Eq v => Digrafo v -> [v]
 topologicalSort = undefined
 
+--  has duplicates
+dfs graph vertex = explore [vertex] (nexts vertex)
+    where nexts   = sucesores graph
+          explore _ [] = []
+          explore found alternatives = do
+                alt <- alternatives
+                guard . not $ alt `elem` found
 
+                let others = explore (alt:found) (nexts alt)
+
+                alt:others
 
 
