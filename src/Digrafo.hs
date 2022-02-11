@@ -61,6 +61,28 @@ grafo4 = (G [0..12] next)
           next 11 = [12]
           next 12 = []
 
+grafo5 = (G ['a'..'h'] next)
+    where next 'a' = "fd"
+          next 'b' = "de"
+          next 'c' = "e"
+          next 'd' = "h"
+          next 'e' = "g"
+          next 'f' = "g"
+          next 'g' = ""
+          next 'h' = "" 
+        
+grafo6 = (G vs next)
+    where vs = ["belt","jacket","pants","shirt","socks","shoes","tie","undershorts","watch"]
+          next "belt" = ["jacket"]
+          next "jacket" = []
+          next "pants" = ["belt","shoes"]
+          next "shirt" = ["belt","tie"]
+          next "socks" = ["shoes"]
+          next "shoes" = []
+          next "tie" = ["jacket"]
+          next "undershorts" = ["pants","shoes"]
+          next "watch" = []
+
 t = trans grafo1
 vs = vertices grafo1
 -----------------------
@@ -144,57 +166,58 @@ unsafeDFS transition found alternatives = explore found alternatives
                                  (transition alt <> nexts)
 
 depthFirstSearch :: Eq v => Digrafo v -> v -> [v]
-depthFirstSearch graph = unsafeDFS (trans graph) [] . return
+depthFirstSearch graph = unsafeDFSPosOrder (trans graph) []
+--depthFirstSearch graph = unsafeDFS (trans graph) [] . return
 
--- TODO: Uncomment
---topologicalSort :: Eq v => Digrafo v -> [v]
--- Doesn't work well yet
--- TODO: Remove signature
-topologicalSort :: (Show v, Eq v) => Digrafo v -> [v]
--- good dfs, there's no repeated elements, but wrong global order
+topologicalSort :: Eq v => Digrafo v -> [v]
 topologicalSort graph = foldl' mix [] . vertices $ graph
         where mix sorted x = if x `elem` sorted
                                 then sorted
-                                else unsafeDFS (trans graph) sorted [x]
+                                else unsafeDFSPosOrder (trans graph) sorted x
+---- good dfs, there's no repeated elements, but wrong global order
+----topologicalSort graph = foldl' mix [] . vertices $ graph
+----        where mix sorted x = if x `elem` sorted
+----                                then sorted
+----                                else unsafeDFS (trans graph) sorted [x]
 
-type Reverse a = [a]
-type Found   a = [a]
+--type Reverse a = [a]
+--type Found   a = [a]
+--
+--unsafeDFSPre :: (Show v, Eq v) => (v -> [v]) -> [v] -> [v] -> Reverse v
+--unsafeDFSPre transition found alternatives = explore found alternatives
+--        where explore found []            = []
+--              explore found (alt : nexts) =
+--                if alt `elem` found
+--                    then explore (found)
+--                                 (nexts)
+--                    else alt : explore (alt : found)
+--                                       (transition alt <> nexts)
 
-unsafeDFSPre :: (Show v, Eq v) => (v -> [v]) -> [v] -> [v] -> Reverse v
-unsafeDFSPre transition found alternatives = explore found alternatives
-        where explore found []            = []
-              explore found (alt : nexts) =
-                if alt `elem` found
-                    then explore (found)
-                                 (nexts)
-                    else alt : explore (alt : found)
-                                       (transition alt <> nexts)
+----topologicalSort2 :: (Show v, Eq v) => Digrafo v -> [v]
+----topologicalSort2 graph = foldl' mix [] . vertices $ graph
+----        where mix sorted x = if x `elem` sorted
+----                                then sorted
+----                                else unsafeDFSPos (trans graph) sorted [x] <> sorted
 
---topologicalSort2 :: (Show v, Eq v) => Digrafo v -> [v]
---topologicalSort2 graph = foldl' mix [] . vertices $ graph
---        where mix sorted x = if x `elem` sorted
---                                then sorted
---                                else unsafeDFSPos (trans graph) sorted [x] <> sorted
+----newtype Queue a = Queue ([a],[a]) deriving (Show,Eq,Ord)
 
-newtype Queue a = Queue ([a],[a]) deriving (Show,Eq,Ord)
+---- Queue (normal list,reversed list)
+----singleton x = Queue ([x],[])
+----
+----emptyq = Queue ([],[])
+----put x (Queue (nor,rev)) = Queue (nor, x : rev)
+----toList (Queue (nor,rev)) = nor ++ reverse rev
+----appendq first second = Queue ((toList first) ++ (toList second),[])
 
--- Queue (normal list,reversed list)
-singleton x = Queue ([x],[])
-
-emptyq = Queue ([],[])
-put x (Queue (nor,rev)) = Queue (nor, x : rev)
-toList (Queue (nor,rev)) = nor ++ reverse rev
-appendq first second = Queue ((toList first) ++ (toList second),[])
-
-unsafeDFSPosFail :: (Show v, Eq v) => (v -> [v]) -> [v] -> [v] -> Reverse v
-unsafeDFSPosFail transition found alternatives = toList $ explore found alternatives
-        where explore found []            = emptyq
-              explore found (alt : nexts) =
-                if trace ("alt: " ++ show alt ++ ", callstack: " ++ show found ++ ", nexts:" ++ show (transition alt <> nexts) ++ "\n") $ alt `elem` found
-                    then explore (found)
-                                 (nexts)
-                    else put alt $ explore (alt : found)
-                                           (transition alt <> nexts)
+----unsafeDFSPosFail :: (Show v, Eq v) => (v -> [v]) -> [v] -> [v] -> Reverse v
+----unsafeDFSPosFail transition found alternatives = toList $ explore found alternatives
+----        where explore found []            = emptyq
+----              explore found (alt : nexts) =
+----                if trace ("alt: " ++ show alt ++ ", callstack: " ++ show found ++ ", nexts:" ++ show (transition alt <> nexts) ++ "\n") $ alt `elem` found
+----                    then explore (found)
+----                                 (nexts)
+----                    else put alt $ explore (alt : found)
+----                                           (transition alt <> nexts)
 
 unsafeDFSPreReverse transition found alternatives = explore found alternatives
         where explore found []            = found
@@ -213,6 +236,9 @@ unsafeDFSPosOrder transition found x = explore found x
                     else alt : foldl' (\found x -> explore found x)
                                     found
                                     (transition alt)
+
+-- This is like a Java's function name
+unsafeDFSPosOrderReversed transition found = reverse . unsafeDFSPosOrder transition found
 
 
 
