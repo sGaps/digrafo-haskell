@@ -31,6 +31,18 @@ grafo2 = (G [1..10] next)
     where next x
             | x /= 10   = return . succ $ x
             | otherwise = return 1
+
+grafo3 = (G [1..10] next)
+    where next  1 = [3]
+          next  2 = [1]
+          next  3 = [4,5]
+          next  4 = [6]
+          next  5 = [6]
+          next  6 = [2,7]
+          next  7 = [2,8,9]
+          next  8 = [9]
+          next  9 = []
+          next 10 = []
 t = trans grafo1
 vs = vertices grafo1
 -----------------------
@@ -101,12 +113,29 @@ gradoEnt g = length . antecesores g
 
 depthFirstSearch :: Eq v => Digrafo v -> v -> [v]
 depthFirstSearch graph vertex = explore [] [vertex]
-    where explore _     []            = []
+    where explore found []            = found
           explore found (alt : nexts) =
             if alt `elem` found
-                then []
-                else alt : explore (alt : found)
-                                   (sucesores graph alt <> nexts)
+                then explore (found)
+                             (nexts)
+                else explore (alt : found)
+                             (sucesores graph alt <> nexts)
+----- Only returns []
+--depthFirstSearch graph vertex = explore [] [vertex]
+--    where explore found []            = found
+--          explore found (alt : nexts) =
+--            if alt `elem` found
+--                then []
+--                else explore (alt : found)
+--                             (sucesores graph alt <> nexts)
+---- It doesn't go to right, only travels through left paths
+--depthFirstSearch graph vertex = explore [] [vertex]
+--    where explore _     []            = []
+--          explore found (alt : nexts) =
+--            if alt `elem` found
+--                then []
+--                else alt : explore (alt : found)
+--                                   (sucesores graph alt <> nexts)
 
 topologicalSort :: Eq v => Digrafo v -> [v]
 topologicalSort = undefined
