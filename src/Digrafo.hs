@@ -12,15 +12,16 @@ module Digrafo (
     topologicalSort)
 where
 
-import Data.List (find, sort, groupBy, nub)
+import Data.List (foldl',scanl', find, sort, groupBy, nub)
 import Data.Function (on)
 import Data.Maybe (maybeToList)
 import Control.Monad(guard,forM)
+import Debug.Trace -- TODO: DELETE
 
 import qualified Control.Monad.State as S
 
 -----------------------
--- | TODO: Delete later
+-- | TODO: Move to test suite
 grafo1 = (G [1..4] suc)
     where suc 1 = [2,3]
           suc 2 = [4]
@@ -43,6 +44,23 @@ grafo3 = (G [1..10] next)
           next  8 = [9]
           next  9 = []
           next 10 = []
+
+-- from Algorithms 4th Ed. Sedgewick (page 576)
+grafo4 = (G [0..12] next)
+    where next  0 = [5,1,6]
+          next  1 = []
+          next  2 = [3,0]
+          next  3 = [5]
+          next  4 = []
+          next  5 = [4]
+          next  6 = [4,9]
+          next  7 = [6]
+          next  8 = [7]
+          next  9 = [11,12,10]
+          next 10 = []
+          next 11 = [12]
+          next 12 = []
+
 t = trans grafo1
 vs = vertices grafo1
 -----------------------
@@ -68,7 +86,7 @@ runTransition :: (a -> b) -> [a] -> [(a, b)]
 runTransition transition = fmap (fmap transition . duplicate)
 
 
--- TODO: Refactor
+-- TODO: Simplify
 arcos :: Digrafo v -> [(v, v)]
 arcos g = mergePairs arcsByRoot
     where arcsByRoot = runTransition (trans g) (vertices g)
@@ -101,7 +119,6 @@ nArcos = length . arcos
 sucesores :: Eq v => Digrafo v -> v -> [v]
 sucesores g v = fmap snd . filter ((== v) . fst) . arcos $ g
 
--- TODO: Redefine but by using runTransition instead of this
 antecesores :: Eq v => Digrafo v -> v -> [v]
 antecesores g v = fmap fst . filter ((== v) . snd) . arcos $ g
 
@@ -111,74 +128,197 @@ gradoSal g = length . sucesores g
 gradoEnt :: Eq v => Digrafo v -> v -> Int
 gradoEnt g = length . antecesores g
 
-depthFirstSearch :: Eq v => Digrafo v -> v -> [v]
-depthFirstSearch graph vertex = explore [] [vertex]
-    where explore found []            = found
-          explore found (alt : nexts) =
-            if alt `elem` found
-                then explore (found)
-                             (nexts)
-                else explore (alt : found)
-                             (sucesores graph alt <> nexts)
------ Only returns []
---depthFirstSearch graph vertex = explore [] [vertex]
---    where explore found []            = found
---          explore found (alt : nexts) =
---            if alt `elem` found
---                then []
---                else explore (alt : found)
---                             (sucesores graph alt <> nexts)
----- It doesn't go to right, only travels through left paths
---depthFirstSearch graph vertex = explore [] [vertex]
---    where explore _     []            = []
---          explore found (alt : nexts) =
---            if alt `elem` found
---                then []
---                else alt : explore (alt : found)
---                                   (sucesores graph alt <> nexts)
 
-topologicalSort :: Eq v => Digrafo v -> [v]
-topologicalSort = undefined
-
--- Deprecated
--- TODO: Remove
--- implicit vertex parameter
---  has duplicates
---dfs graph vertex = nub . explore [vertex] . nexts $ vertex
-dfs graph vertex = explore [vertex] . nexts $ vertex
-    where nexts   = sucesores graph
-          explore _ [] = []
-          explore found alternatives = do
-                alt <- alternatives
-                guard . not $ alt `elem` found
-
-                let others = explore (alt:found) (nexts alt)
-
-                alt:others
-
--- TODO: Remove
-easyDFS graph vertex = explore [] [vertex]
-    where explore _ [] = []
-          explore found (alt:nexts) =
-            if alt `elem` found
-                then []
-                else alt : explore (alt : found) ((sucesores graph alt) ++ nexts)
-
-
---type Found v = [v]
---type Alternative v = [v]
-
---statefulDFS :: Eq v => S.State (Found v) (Alternative v)
---statefulDFS []   = return []
---statefulDFS alts = forM 
-
---statefulDFS :: Eq v => Digrafo v -> v -> [v]
-----statefulDFS graph vertex = runState . explore [vertex] . alternatives $ vertex
---statefulDFS graph vertex = runState . explore [vertex] $ []
---    where alternatives = sucesores graph
+-- | Pre-requisites:
 --
---          explore :: S.State (Found v) (Alternative v)
---          explore [] = return []
---          explore alts = do
---            forM 
+-- NOTE: This doesn't check the transition function nor the found elements
+-- nor the alternatives list.
+unsafeDFS :: Eq v => (v -> [v]) -> [v] -> [v] -> [v]
+unsafeDFS transition found alternatives = explore found alternatives
+        where explore found []            = found
+              explore found (alt : nexts) =
+                if alt `elem` found
+                    then explore (found)
+                                 (nexts)
+                    else explore (alt : found)
+                                 (transition alt <> nexts)
+
+depthFirstSearch :: Eq v => Digrafo v -> v -> [v]
+depthFirstSearch graph = unsafeDFS (trans graph) [] . return
+
+-- TODO: Uncomment
+--topologicalSort :: Eq v => Digrafo v -> [v]
+-- Doesn't work well yet
+-- TODO: Remove signature
+topologicalSort :: (Show v, Eq v) => Digrafo v -> [v]
+-- good dfs, there's no repeated elements, but wrong global order
+topologicalSort graph = foldl' mix [] . vertices $ graph
+        where mix sorted x = if x `elem` sorted
+                                then sorted
+                                else unsafeDFS (trans graph) sorted [x]
+
+type Reverse a = [a]
+type Found   a = [a]
+
+unsafeDFSPre :: (Show v, Eq v) => (v -> [v]) -> [v] -> [v] -> Reverse v
+unsafeDFSPre transition found alternatives = explore found alternatives
+        where explore found []            = []
+              explore found (alt : nexts) =
+                if alt `elem` found
+                    then explore (found)
+                                 (nexts)
+                    else alt : explore (alt : found)
+                                       (transition alt <> nexts)
+
+--topologicalSort2 :: (Show v, Eq v) => Digrafo v -> [v]
+--topologicalSort2 graph = foldl' mix [] . vertices $ graph
+--        where mix sorted x = if x `elem` sorted
+--                                then sorted
+--                                else unsafeDFSPos (trans graph) sorted [x] <> sorted
+
+newtype Queue a = Queue ([a],[a]) deriving (Show,Eq,Ord)
+
+-- Queue (normal list,reversed list)
+singleton x = Queue ([x],[])
+
+emptyq = Queue ([],[])
+put x (Queue (nor,rev)) = Queue (nor, x : rev)
+toList (Queue (nor,rev)) = nor ++ reverse rev
+appendq first second = Queue ((toList first) ++ (toList second),[])
+
+unsafeDFSPosFail :: (Show v, Eq v) => (v -> [v]) -> [v] -> [v] -> Reverse v
+unsafeDFSPosFail transition found alternatives = toList $ explore found alternatives
+        where explore found []            = emptyq
+              explore found (alt : nexts) =
+                if trace ("alt: " ++ show alt ++ ", callstack: " ++ show found ++ ", nexts:" ++ show (transition alt <> nexts) ++ "\n") $ alt `elem` found
+                    then explore (found)
+                                 (nexts)
+                    else put alt $ explore (alt : found)
+                                           (transition alt <> nexts)
+
+unsafeDFSPreReverse transition found alternatives = explore found alternatives
+        where explore found []            = found
+              explore found (alt : nexts) =
+                if alt `elem` found
+                    then explore (found)
+                                 (nexts)
+                    else explore (alt : found)
+                                       (transition alt <> nexts)
+
+-- | This is kinda good, I just have to reverse it
+unsafeDFSPosOrder transition found x = explore found x
+    where explore found alt =
+                if alt `elem` found
+                    then found
+                    else alt : foldl' (\found x -> explore found x)
+                                    found
+                                    (transition alt)
+
+
+
+--        where explore found []            = []
+--              explore found (alt : nexts) =
+--                if alt `elem` found
+--                    then explore (found)
+--                                 (nexts)
+--                    else explore (alt : found)
+--                                 (transition alt <> nexts)
+
+        -- early process
+--    where explore found alternatives =
+--            -- for each izq >> der
+--            fold  (\(found,stack) x -> 
+--                    if x `elem` found
+--                        -- ignore search
+--                        then (found,stack)
+--                        else explore (x:found) (transition x)
+--                    )
+--                   (found,[])
+--                   alternatives
+-- Reversed PosOrder
+--  where explore found alternatives =
+--          -- for each izq >> der
+--          foldl' (\found x -> 
+--                  if x `elem` found
+--                      -- ignore search
+--                      then found
+--                      else explore (x:found) (transition x)
+--                  )
+--                 found
+--                 alternatives
+--    explore [] found alternatives
+--    where explore stack found [] = stack
+--          explore stack found (alt : alternatives) =
+--            if alt `elem` found
+--                then explore stack found alternatives -- ignore alt
+--                else alt : explore stack 
+
+--unsafeDFSPos transition found alternatives = toList $ explore emptyq found alternatives
+--        where explore queue found []            = queue
+--              explore queue found (alt : searchLater) =
+--                let nexts = transition alt
+--                in if inspect found alt searchLater $ alt `elem` found
+--                    -- just ignore the element
+--                    then explore (queue)
+--                                 (found)
+--                                 (searchLater)
+--                    else if null nexts
+--                            -- it's a leaf, thus we have to put the element inmediately on the queue
+--                            then explore (put alt queue)
+--                                         (alt : found)
+--                                         (transition alt <> searchLater)
+--
+--                            -- gotta wait a more time till the chilren are found
+--                            else put alt $ explore (queue)
+--                                                   (alt : found)
+--                                                   (transition alt <> searchLater)
+--              -- TODO: DELETE LATER
+--              inspect found alt nexts = trace ("alt: " ++ show alt ++ ", callstack: " ++ show found ++ ", nexts:" ++ show (transition alt <> nexts) ++ "\n") . id
+
+--                let nexts = transition alt
+--                in if inspect found alt searchLater $ alt `elem` found
+--                    -- just ignore the element
+--                    then explore (queue)
+--                                 (found)
+--                                 (nexts)
+--                    else if null nexts
+--                            -- it's a leaf, thus we have to put the element inmediately on the queue
+--                            then explore (put alt queue)
+--                                         (alt : found)
+--                                         (transition alt <> searchLater)
+--
+--                            -- gotta wait a more time till the chilren are found
+--                            else put alt $ explore (queue)
+--                                                   (alt : found)
+--                                                   (transition alt <> searchLater)
+--              -- TODO: DELETE LATER
+--              inspect found alt nexts = trace ("alt: " ++ show alt ++ ", callstack: " ++ show found ++ ", nexts:" ++ show (transition alt <> nexts) ++ "\n") . id
+
+
+
+--unsafeDFSRevPostOrder :: Eq v => (v -> [v]) -> [v] -> [v] -> Reverse v
+--unsafeDFSRevPostOrder transition found alternatives = explore [] found alternatives
+--        where explore revpost found []            = []
+--              explore revpost found (alt : nexts) =
+--                if alt `elem` found
+--                    then explore (found)
+--                                 (nexts)
+--                    else alt : explore (alt : found)
+--                                       (transition alt <> nexts)
+
+-- too many repetitions
+--topologicalSort graph = foldl' apply [] . vertices $ graph
+--    where apply sorted x = if trace (show x ++ ": " ++ ", sorted: " ++ show sorted ++ ", " ++ show (x `elem` sorted)) $ x `elem` sorted
+--                            then trace ("Ignore x") $ sorted
+--                            else trace ("Update search") $ depthFirstSearch graph x <> sorted
+
+
+data Tree a = Branch a (Tree a) (Tree a) | Leaf a deriving (Show,Eq,Ord)
+preorder fun (Branch a l r) = fun a : (preorder fun l ++ preorder fun r)
+preorder fun (Leaf   a    ) = [fun a]
+tree1 = Branch 0 (Leaf 1) (Branch 2 (Leaf 3) (Leaf 4))
+
+posorder fun (Branch a l r) = (posorder fun l ++ posorder fun r) ++ [fun a]
+posorder fun (Leaf   a    ) = [fun a]
+
 
