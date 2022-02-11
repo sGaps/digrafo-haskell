@@ -12,10 +12,12 @@ module Digrafo (
     topologicalSort)
 where
 
-import Data.List (find, sort, groupBy)
+import Data.List (find, sort, groupBy, nub)
 import Data.Function (on)
 import Data.Maybe (maybeToList)
-import Control.Monad(guard)
+import Control.Monad(guard,forM)
+
+import qualified Control.Monad.State as S
 
 -----------------------
 -- | TODO: Delete later
@@ -24,11 +26,14 @@ grafo1 = (G [1..4] suc)
           suc 2 = [4]
           suc 3 = [4]
           suc 4 = []
+
+grafo2 = (G [1..10] next)
+    where next x
+            | x /= 10   = return . succ $ x
+            | otherwise = return 1
 t = trans grafo1
 vs = vertices grafo1
 -----------------------
-
-
 
 
 data Digrafo v = G [v] (v -> [v])
@@ -95,13 +100,23 @@ gradoEnt :: Eq v => Digrafo v -> v -> Int
 gradoEnt g = length . antecesores g
 
 depthFirstSearch :: Eq v => Digrafo v -> v -> [v]
-depthFirstSearch = undefined
+depthFirstSearch graph vertex = explore [] [vertex]
+    where explore _     []            = []
+          explore found (alt : nexts) =
+            if alt `elem` found
+                then []
+                else alt : explore (alt : found)
+                                   (sucesores graph alt <> nexts)
 
 topologicalSort :: Eq v => Digrafo v -> [v]
 topologicalSort = undefined
 
+-- Deprecated
+-- TODO: Remove
+-- implicit vertex parameter
 --  has duplicates
-dfs graph vertex = explore [vertex] (nexts vertex)
+--dfs graph vertex = nub . explore [vertex] . nexts $ vertex
+dfs graph vertex = explore [vertex] . nexts $ vertex
     where nexts   = sucesores graph
           explore _ [] = []
           explore found alternatives = do
@@ -112,4 +127,29 @@ dfs graph vertex = explore [vertex] (nexts vertex)
 
                 alt:others
 
+-- TODO: Remove
+easyDFS graph vertex = explore [] [vertex]
+    where explore _ [] = []
+          explore found (alt:nexts) =
+            if alt `elem` found
+                then []
+                else alt : explore (alt : found) ((sucesores graph alt) ++ nexts)
+
+
+--type Found v = [v]
+--type Alternative v = [v]
+
+--statefulDFS :: Eq v => S.State (Found v) (Alternative v)
+--statefulDFS []   = return []
+--statefulDFS alts = forM 
+
+--statefulDFS :: Eq v => Digrafo v -> v -> [v]
+----statefulDFS graph vertex = runState . explore [vertex] . alternatives $ vertex
+--statefulDFS graph vertex = runState . explore [vertex] $ []
+--    where alternatives = sucesores graph
+--
+--          explore :: S.State (Found v) (Alternative v)
+--          explore [] = return []
+--          explore alts = do
+--            forM 
 
