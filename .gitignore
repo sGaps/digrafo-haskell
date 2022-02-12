@@ -1,4 +1,6 @@
 dist-newstyle/
 *.txt
 *.save0
-
+*.local
+*~
+tests/
