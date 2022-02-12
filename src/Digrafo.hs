@@ -12,6 +12,8 @@ module Digrafo (
     topologicalSort)
 where
 
+-- TODO: Add Documentation
+
 -- Strict fold-left operator
 import Data.List (foldl')
 
@@ -77,6 +79,7 @@ gradoEnt :: Eq v => Digrafo v -> v -> Int
 gradoEnt g = length . antecesores g
 
 
+-- TODO: REMOVE. CAUSE: DEPRECATION
 -- | Pre-requisites:
 --
 -- NOTE: This doesn't check the transition function nor the found elements
@@ -100,6 +103,7 @@ topologicalSort graph = foldl' mix [] . vertices $ graph
                                 then sorted
                                 else unsafeDFSPosOrder (trans graph) sorted x
 
+-- TODO: REMOVE. CAUSE: DEPRECATION
 unsafeDFSPreReverse transition found alternatives = explore found alternatives
         where explore found []            = found
               explore found (alt : nexts) =
@@ -118,6 +122,7 @@ unsafeDFSPosOrder transition found x = explore found x
                                     found
                                     (transition alt)
 
+-- TODO: REMOVE. CAUSE: DEPRECATION
 -- This is like a Java's function name
 unsafeDFSPosOrderReversed transition found = reverse . unsafeDFSPosOrder transition found
 
