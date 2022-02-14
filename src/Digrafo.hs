@@ -37,6 +37,7 @@ vertices (G vs _) = vs
 
 -- utility function
 -- | Returns the GRaph's transition/succesor function
+trans :: Digrafo v -> (v -> [v])
 trans (G _ t) = t
 
 
