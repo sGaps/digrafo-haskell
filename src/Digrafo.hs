@@ -77,10 +77,14 @@ antecesores :: Eq v => Digrafo v -> v -> [v]
 antecesores g v = fmap fst . filter ((== v) . snd) . arcos $ g
 
 -- | Returns the number of successors of the given vertex in a graph.
+--
+-- See also: 'sucesores'.
 gradoSal :: Eq v => Digrafo v -> v -> Int
 gradoSal g = length . sucesores g
 
 -- | Returns the number of predecessors of the given vertex in a graph.
+--
+-- See also: 'antecesores'.
 gradoEnt :: Eq v => Digrafo v -> v -> Int
 gradoEnt g = length . antecesores g
 
