@@ -1,5 +1,17 @@
+{-|
+Module      : Digrafo
+Description : A simple module for modelling Directed Graphs.
+Copyright   : (c) Gabriel Peraza, 2022
+License     : MIT
+Stability   : experimental
+
+A simple Directed Graph made for a Programming Languages course.
+-}
+
 module Digrafo (
-    Digrafo (G), -- sólo se exporta el tipo, pero no sus constructores
+    -- * Data type
+    Digrafo (G),
+    -- * Operators
     vertices,
     arcos,
     nVertices,
@@ -12,108 +24,86 @@ module Digrafo (
     topologicalSort)
 where
 
--- TODO: Add Documentation
-
--- Strict fold-left operator
 import Data.List (foldl')
 
+-- | A Directed Graph data type. It holds a list with no repeated vertices and
+--   a transition function that returns the next vertices which are in the
+--   given list.
 data Digrafo v = G [v] (v -> [v])
 
+-- | Returns the Graph's vertices
 vertices :: Digrafo v -> [v]
 vertices (G vs _) = vs
 
 -- utility function
--- | returns the transition/succesor function
+-- | Returns the GRaph's transition/succesor function
 trans (G _ t) = t
 
 
--- utility function
--- | Takes a transition function and runs it over each element of the given list.
---
--- returns 
+-- Function(Internals)
+
+-- | Apply the given transition function on each elemenet of a list.
 runTransition :: (a -> b) -> [a] -> [(a, b)]
 runTransition transition = fmap (fmap transition . duplicate)
     where duplicate a = (a,a)
 
 
--- TODO: Simplify
+-- how does 'arcos' work?
+--  runs the transition function over the list.
+--  and then, it just merge the list of /options/ that was generated in the previous step.
+
+-- | Returns the edge set the given Graph.
 arcos :: Digrafo v -> [(v, v)]
 arcos g = mergePairs arcsByRoot
     where arcsByRoot = runTransition (trans g) (vertices g)
-          mergePairs = concat . fmap (\(root,nexts) -> fmap ((,) root) nexts) -- it's not clear!
-          
-    -- what to do?
-    --  for every vertex, find the successor
-    --  so, we can have something like this:
-    --      1 -> [2,3]
-    --          implies:
-    --              (1,2), (2,3)
-    --      2 -> [4]
-    --          implies:
-    --              (2,4)
-    --     ...
-    --
-    --     so, we can construct this with the following function:
-    --     fmap (sucessor . duplicate) . vertices
-    --      -> 
-    --
-    --     fmap (\x) [1..4]
+          mergePairs = concat . fmap (\(root,nexts) -> fmap ((,) root) nexts)
 
+
+-- | Returns the number of vertices in the graph. See also 'vertices'.
 nVertices :: Digrafo v -> Int
 nVertices = length . vertices
 
+-- | Returns the number of edges in the graph. See also 'arcos'.
 nArcos :: Digrafo v -> Int
 nArcos = length . arcos
 
 
+-- | Returns a list of the successors of the given vertex in a graph.
 sucesores :: Eq v => Digrafo v -> v -> [v]
 sucesores = trans
 
+-- | Returns a list of the predecessors of the given vertex in a graph.
 antecesores :: Eq v => Digrafo v -> v -> [v]
 antecesores g v = fmap fst . filter ((== v) . snd) . arcos $ g
 
+-- | Returns the number of successors of the given vertex in a graph.
 gradoSal :: Eq v => Digrafo v -> v -> Int
 gradoSal g = length . sucesores g
 
+-- | Returns the number of predecessors of the given vertex in a graph.
 gradoEnt :: Eq v => Digrafo v -> v -> Int
 gradoEnt g = length . antecesores g
 
 
--- TODO: REMOVE. CAUSE: DEPRECATION
--- | Pre-requisites:
---
--- NOTE: This doesn't check the transition function nor the found elements
--- nor the alternatives list.
-unsafeDFS :: Eq v => (v -> [v]) -> [v] -> [v] -> [v]
-unsafeDFS transition found alternatives = explore found alternatives
-        where explore found []            = found
-              explore found (alt : nexts) =
-                if alt `elem` found
-                    then explore (found)
-                                 (nexts)
-                    else explore (alt : found)
-                                 (transition alt <> nexts)
-
+-- | Returns the Depth First Search of a given node in the graph.
 depthFirstSearch :: Eq v => Digrafo v -> v -> [v]
 depthFirstSearch graph = unsafeDFSPosOrder (trans graph) []
 
+-- | Returns the vertices of a Directed Graph sorted by topological order.
+--
+-- This functions works correctly when this property is met:
+--
+-- prop> (nub . vertices) G == vertices G
+--
+-- See also 'depthFirstSearch'.
 topologicalSort :: Eq v => Digrafo v -> [v]
 topologicalSort graph = foldl' mix [] . vertices $ graph
         where mix sorted x = if x `elem` sorted
                                 then sorted
                                 else unsafeDFSPosOrder (trans graph) sorted x
 
--- TODO: REMOVE. CAUSE: DEPRECATION
-unsafeDFSPreReverse transition found alternatives = explore found alternatives
-        where explore found []            = found
-              explore found (alt : nexts) =
-                if alt `elem` found
-                    then explore (found)
-                                 (nexts)
-                    else explore (alt : found)
-                                       (transition alt <> nexts)
-
--- | This is kinda good, I just have to reverse it
+-- | Performs a DFS and returns the visited vertices on post order.
+unsafeDFSPosOrder :: (Eq v, Foldable f) => (v -> f v) -> [v] -> v -> [v]
 unsafeDFSPosOrder transition found x = explore found x
     where explore found alt =
                 if alt `elem` found
@@ -121,8 +111,4 @@ unsafeDFSPosOrder transition found x = explore found x
                     else alt : foldl' (\found x -> explore found x)
                                     found
                                     (transition alt)
-
--- TODO: REMOVE. CAUSE: DEPRECATION
--- This is like a Java's function name
-unsafeDFSPosOrderReversed transition found = reverse . unsafeDFSPosOrder transition found
 

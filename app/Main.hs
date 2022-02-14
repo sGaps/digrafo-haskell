@@ -1,15 +1,23 @@
+{-|
+Module      : Main
+Description : Test Program for Directed Graphs
+Copyright   : (c) Gabriel Peraza, 2022
+License     : MIT
+-}
 module Main where
 
 import Digrafo
 
 -- a given input
+grafo1 :: Digrafo Integer
 grafo1 = (G [1..4] suc)
     where suc 1 = [2,3]
           suc 2 = [4]
           suc 3 = [4]
           suc 4 = []
 
--- example from Algorithms 4th Ed. Sedgewick (page 576)
+-- example from Algorithms 4th Ed., Sedgewick (page 576)
+grafo4 :: Digrafo Int
 grafo4 = (G [0..12] next)
     where next  0 = [5,1,6]
           next  1 = []
@@ -25,9 +33,26 @@ grafo4 = (G [0..12] next)
           next 11 = [12]
           next 12 = []
 
+-- from Introduction to Algorithms 3rd Ed., Cormen. (page 613)
+grafo6 :: Digrafo String
+grafo6 = (G vs next)
+    where vs = ["belt","jacket","pants","shirt","socks","shoes","tie","undershorts","watch"]
+          next "belt" = ["jacket"]
+          next "jacket" = []
+          next "pants" = ["belt","shoes"]
+          next "shirt" = ["belt","tie"]
+          next "socks" = ["shoes"]
+          next "shoes" = []
+          next "tie" = ["jacket"]
+          next "undershorts" = ["pants","shoes"]
+          next "watch" = []
+
+-- | Just print '\n' on Stdin
 emptyline = putStrLn ""
 
-demo :: String -> Digrafo Int -> IO ()
+-- | Runs some tests on a Directed Graph
+-- demo :: String -> Digrafo Int -> IO ()
+demo :: (Eq a, Show a) => String -> Digrafo a -> IO ()
 demo title graph = do
     putStrLn title
     
@@ -83,6 +108,7 @@ demo title graph = do
 main :: IO ()
 main = do
     putStrLn "Tarea 03"
-    demo "Grafo 1" grafo1
-    demo "Grafo 4" grafo4
+    demo "Grafo 1: Tarea 03, Lenguajes de Programación." grafo1
+    demo "Grafo 4: Algorithms 4th Ed., Sedgewick." grafo4
+    demo "Grafo 6: Introduction to Algorithms 3rd Ed., Cormen" grafo6
 
